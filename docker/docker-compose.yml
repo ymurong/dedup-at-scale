@@ -1,0 +1,17 @@
+version: '3.2'
+
+services:
+  dedup-api:
+    image: dedup-api:1.0.0
+    ports:
+      - "8000:8000"
+    links:
+      - spark-master
+  spark-master:
+    image: bde2020/spark-master:3.3.0-hadoop3.3
+    container_name: spark-master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
