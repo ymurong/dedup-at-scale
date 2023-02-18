@@ -1,9 +1,17 @@
 import duckdb
 from contextlib import contextmanager
-import os
 
 
 class DBConnector:
+    """
+    we manage one parent connection per database_url. To create a second connection to an existing database,
+    use the cursor method. This method will spawn new connection from the parent connection which allow parallel
+    threads running queries independently.
+
+    Example:
+        conn = DBConnector("YOUR_DATABASE_URL").cursor()
+        conn.execute(...)
+    """
     _instance = {}
 
     def __new__(cls, database_url):
@@ -21,7 +29,9 @@ class DBConnector:
 @contextmanager
 def connection(database_url) -> duckdb.DuckDBPyConnection:
     """
-    only used for data initialization
+    This is only used for database initialization before app startup
+    and the database connection must be closed after the job finished,
+    as duckdb only allowed one parent connection to its database file on disk
     :param database_url
     """
     conn = duckdb.connect(database=database_url, read_only=False)
