@@ -1,8 +1,9 @@
 from src.common.mapreduce_util import mapreduce
 from src.common.mutation_util import flatten
+from duckdb import DuckDBPyConnection
 
 
-def compute_word_count(conn) -> dict:
+def compute_word_count(conn: DuckDBPyConnection) -> dict:
     df_documents = conn.execute("select * from documents").df()
     # turn dataframe to list of tuples
     partition = list(df_documents.itertuples(index=False, name=None))
