@@ -10,7 +10,9 @@ h11==0.14.0
 idna==3.4
 numpy==1.24.2
 pandas==1.5.3
+py4j==0.10.9.5
 pydantic==1.10.4
+pyspark==3.3.0
 python-dateutil==2.8.2
 pytz==2022.7.1
 six==1.16.0

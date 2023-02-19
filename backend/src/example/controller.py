@@ -15,10 +15,20 @@ def get_conn():
         conn.close()
 
 
-@example_app.get("/word_count", response_model=schemas.WordCountResponse,
+@example_app.get("/word_count_local", response_model=schemas.WordCountResponse,
                  description="compute word count results")
-def word_count(conn: DuckDBPyConnection = Depends(get_conn)):
+def word_count_local(conn: DuckDBPyConnection = Depends(get_conn)):
     word_counts_results = service.compute_word_count(conn)
+    response = {
+        "word_counts": word_counts_results
+    }
+    return response
+
+
+@example_app.get("/word_count_spark", response_model=schemas.WordCountResponse,
+                 description="compute word count results via spark rdd")
+def word_count_sparksql(conn: DuckDBPyConnection = Depends(get_conn)):
+    word_counts_results = service.compute_word_count_rdd(conn)
     response = {
         "word_counts": word_counts_results
     }

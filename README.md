@@ -13,7 +13,7 @@ The example output will look like:
 ```bash
 CONTAINER ID   IMAGE                                  COMMAND                  CREATED          STATUS          PORTS                                                      NAMES
 f951a4f7ed54   dedup-api:1.0.0                        "uvicorn backend.src…"   33 seconds ago   Up 31 seconds   0.0.0.0:8000->8000/tcp                                     docker-dedup-api-1
-19d2b215b148   bde2020/spark-master:3.3.0-hadoop3.3   "/bin/bash /master.sh"   9 minutes ago    Up 31 seconds   0.0.0.0:7077->7077/tcp, 6066/tcp, 0.0.0.0:8080->8080/tcp   spark-master
+19d2b215b148   ymurong/spark-master:3.3.0-hadoop3.3   "/bin/bash /master.sh"   9 minutes ago    Up 31 seconds   0.0.0.0:7077->7077/tcp, 6066/tcp, 0.0.0.0:8080->8080/tcp   spark-master
 ```
 
 The UI Address and Service Address are exposed as the following:
@@ -35,6 +35,7 @@ You can stop and remove Spark and API containers by running the following script
 # How to Develop Locally
 
 ## 1. VirtualENV Setup
+You must use python 3.10 as remote spark cluster worker only support python 3.10. 
 The following example use python 3.10. Run the following commands from PROJECT ROOT.
 ```bash
 pip3.10 install virtualenv

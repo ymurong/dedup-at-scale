@@ -19,8 +19,10 @@ class DBConnector:
             cls._instance[database_url] = super().__new__(cls)
         return cls._instance[database_url]
 
-    def __init__(self, database_url):
+    def __init__(self, database_url, threads=2):
         self.conn = duckdb.connect(database=database_url, read_only=False)
+        self.conn.execute(f"PRAGMA threads={threads}")
+        self.conn.execute("PRAGMA enable_object_cache")
 
     def cursor(self) -> duckdb.DuckDBPyConnection:
         return self.conn.cursor()
@@ -41,5 +43,4 @@ def connection(database_url) -> duckdb.DuckDBPyConnection:
         conn.close()
 
 
-def import_table_from_csv(conn, table_name, csv_path):
-    conn.execute(f"CREATE TABLE IF NOT EXISTS {table_name} AS (SELECT * FROM '{csv_path}')")
+
