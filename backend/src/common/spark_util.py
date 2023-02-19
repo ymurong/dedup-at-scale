@@ -15,10 +15,10 @@ def create_spark_session_local():
 
 
 @contextmanager
-def create_spark_session(app_name, port=7077):
+def create_spark_session(app_name, spark_master="spark://localhost:7077"):
     sc = SparkSession.builder \
         .appName(app_name) \
-        .master(f"spark://localhost:{port}") \
+        .master(spark_master) \
         .getOrCreate()
     try:
         yield sc

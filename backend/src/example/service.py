@@ -3,6 +3,7 @@ from src.common.mutation_util import flatten
 from duckdb import DuckDBPyConnection
 from src.common.spark_util import create_spark_session
 from typing import Dict
+from src.resources.conf import SPARK_MASTER
 
 from src.example.exception import spark_execution_exception
 
@@ -42,7 +43,7 @@ def compute_word_count_rdd(conn: DuckDBPyConnection) -> Dict:
 
     # create spark session
     try:
-        with create_spark_session("word_count") as sc:
+        with create_spark_session("word_count", spark_master=SPARK_MASTER) as sc:
             # spark computation
             documents_rdd = sc.sparkContext.parallelize(partition, 2)
             wordcount_result = documents_rdd \
