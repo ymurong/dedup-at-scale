@@ -4,8 +4,13 @@ from duckdb import DuckDBPyConnection
 from src.common.spark_util import create_spark_session
 from typing import Dict
 from src.resources.conf import SPARK_MASTER
-
 from src.example.exception import spark_execution_exception
+from src.common.load_data import readData
+import dedupe
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def compute_word_count(conn: DuckDBPyConnection) -> Dict:
@@ -43,16 +48,63 @@ def compute_word_count_rdd(conn: DuckDBPyConnection) -> Dict:
 
     # create spark session
     try:
-        with create_spark_session("word_count", spark_master=SPARK_MASTER) as sc:
+        with create_spark_session("word_count", spark_master=SPARK_MASTER) as spark:
             # spark computation
-            documents_rdd = sc.sparkContext.parallelize(partition, 2)
+            documents_rdd = spark.sparkContext.parallelize(partition, 2)
             wordcount_result = documents_rdd \
                 .flatMap(lambda docid_and_title: [(word, 1) for word in docid_and_title[1].split(" ")]) \
                 .reduceByKey(lambda count1, count2: count1 + count2) \
                 .collect()
-    except Exception:
+    except Exception as e:
+        logger.error(e, exc_info=True)
         raise spark_execution_exception
 
     # sort list of tuples reversely based on value (2nd element) and transform to dict
     wordcount_dict = dict(sorted(wordcount_result, key=lambda x: x[1], reverse=True))
     return wordcount_dict
+
+
+def blocking_records(conn: DuckDBPyConnection) -> Dict:
+    def f_map(id, record):
+        output_tuples = []
+        record_id, instance = record
+
+        predicates = [
+            (":" + str(i), predicate) for i, predicate in enumerate(broadcast_deduper.predicates)
+        ]
+        for pred_id, predicate in predicates:
+            block_keys = predicate(instance, target=False)
+            for block_key in block_keys:
+                output_tuples.append((record, block_key))
+        return output_tuples
+
+    input_file = '../resources/csv_example_messy_input.csv'
+    settings_file = '../resources/csv_example_learned_settings'
+    data_d = readData(input_file)
+    dir = os.path.dirname(os.path.abspath(__file__))
+    settings_fname = os.path.join(dir, settings_file)
+    with open(settings_fname, 'rb') as f:
+        deduper = dedupe.StaticDedupe(f)
+    try:
+        with create_spark_session("dedupe_blocking", spark_master=SPARK_MASTER) as spark:
+            sc = spark.sparkContext
+            # broadcast pretrained deduper
+            broadcast_deduper = sc.broadcast(deduper)
+            # spark computation
+            records_rdd = sc.parallelize(list(data_d.items()), 2)
+            df_blocking = records_rdd \
+                .flatMap(f_map) \
+                .collect() \
+                .toDF()
+            df_blocking.createOrReplaceTempView("blocking_map")
+            rdd_pairs = sc.sql("""
+                SELECT DISTINCT a.record_id, b.record_id
+                                   FROM blocking_map a
+                                   INNER JOIN blocking_map b
+                                   USING (block_key)
+                                   WHERE a.record_id < b.record_id
+            """).collect()
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        raise spark_execution_exception
+    return dict(rdd_pairs)

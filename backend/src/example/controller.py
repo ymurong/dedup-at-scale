@@ -33,3 +33,13 @@ def word_count_sparksql(conn: DuckDBPyConnection = Depends(get_conn)):
         "word_counts": word_counts_results
     }
     return response
+
+
+@example_app.get("/record_pairs_spark", response_model=schemas.WordCountResponse,
+                 description="compute word count results via spark rdd")
+def blocking_records_spark(conn: DuckDBPyConnection = Depends(get_conn)):
+    record_pairs_dict = service.blocking_records(conn)
+    response = {
+        "record_pairs": record_pairs_dict
+    }
+    return response
