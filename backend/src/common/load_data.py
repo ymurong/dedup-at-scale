@@ -18,13 +18,19 @@ def import_table_from_csv(conn, table_name, csv_path):
     conn.execute(f"CREATE TABLE IF NOT EXISTS {table_name} AS (SELECT * FROM '{csv_path}')")
 
 
-def readData(filename):
+def to_abs_fname(relative_path):
+    dir = os.path.dirname(os.path.abspath(__file__))
+    fname = os.path.join(dir, relative_path)
+    return fname
+
+
+def read_data(filename):
     """
     Read in our data from a CSV file and create a dictionary of records,
     where the key is a unique record ID and each value is dict
     """
 
-    def preProcess(column):
+    def pre_process(column):
         """
         Do a little bit of data cleaning with the help of Unidecode and Regex.
         Things like casing, extra spaces, quotes and new lines can be ignored.
@@ -38,13 +44,11 @@ def readData(filename):
             column = None
         return column
 
-    dir = os.path.dirname(os.path.abspath(__file__))
-    fname = os.path.join(dir, filename)
     data_d = {}
-    with open(fname) as f:
+    with open(filename) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            clean_row = [(k, preProcess(v)) for (k, v) in row.items()]
+            clean_row = [(k, pre_process(v)) for (k, v) in row.items()]
             row_id = int(row['Id'])
             data_d[row_id] = dict(clean_row)
 

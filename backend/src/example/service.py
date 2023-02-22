@@ -2,10 +2,10 @@ from src.common.mapreduce_util import mapreduce
 from src.common.mutation_util import flatten
 from duckdb import DuckDBPyConnection
 from src.common.spark_util import create_spark_session
-from typing import Dict
-from src.resources.conf import SPARK_MASTER
+from typing import Dict, List, Tuple
+from src.resources.conf import SPARK_MASTER, RECORDS_EXAMPLE_DEDUPE_SETTING_PATH, RECORDS_EXAMPLE_CSV_PATH
 from src.example.exception import spark_execution_exception
-from src.common.load_data import readData
+from src.common.load_data import read_data, to_abs_fname
 import dedupe
 import os
 import logging
@@ -65,46 +65,65 @@ def compute_word_count_rdd(conn: DuckDBPyConnection) -> Dict:
 
 
 def blocking_records(conn: DuckDBPyConnection) -> Dict:
-    def f_map(id, record):
-        output_tuples = []
-        record_id, instance = record
+    # load data
+    input_file = RECORDS_EXAMPLE_CSV_PATH
+    data_d = read_data(to_abs_fname(input_file))
 
-        predicates = [
-            (":" + str(i), predicate) for i, predicate in enumerate(broadcast_deduper.predicates)
-        ]
-        for pred_id, predicate in predicates:
-            block_keys = predicate(instance, target=False)
-            for block_key in block_keys:
-                output_tuples.append((record, block_key))
-        return output_tuples
-
-    input_file = '../resources/csv_example_messy_input.csv'
-    settings_file = '../resources/csv_example_learned_settings'
-    data_d = readData(input_file)
-    dir = os.path.dirname(os.path.abspath(__file__))
-    settings_fname = os.path.join(dir, settings_file)
-    with open(settings_fname, 'rb') as f:
+    # load dedupe setting
+    settings_file = RECORDS_EXAMPLE_DEDUPE_SETTING_PATH
+    with open(to_abs_fname(settings_file), 'rb') as f:
         deduper = dedupe.StaticDedupe(f)
+
+    # apply blocking rules on spark
     try:
         with create_spark_session("dedupe_blocking", spark_master=SPARK_MASTER) as spark:
             sc = spark.sparkContext
+
             # broadcast pretrained deduper
-            broadcast_deduper = sc.broadcast(deduper)
-            # spark computation
-            records_rdd = sc.parallelize(list(data_d.items()), 2)
-            df_blocking = records_rdd \
+            broadcast_predicates = sc.broadcast(deduper.predicates)
+
+            # define map function
+            def f_map(id_record) -> Tuple:
+                """
+                apply predicates to incoming record, each record can have multiple block_key
+                """
+                record_id, instance = id_record
+                predicates = [
+                    (":" + str(i), predicate) for i, predicate in enumerate(broadcast_predicates.value)
+                ]
+                for pred_id, predicate in predicates:
+                    block_keys = predicate(instance, target=False)
+                    for block_key in block_keys:
+                        yield record_id, block_key
+
+            # blocking_list (record_id, block_key)
+            original_records_list = list(data_d.items())
+            records_rdd = sc.parallelize(original_records_list, 2)
+            blocking_list = records_rdd \
                 .flatMap(f_map) \
-                .collect() \
-                .toDF()
+                .collect()
+
+            # compute pair table based on block_key
+            # we make sure that each pair only appear once
+            columns = ["record_id", "block_key"]
+            df_blocking = spark.createDataFrame(blocking_list, columns)
             df_blocking.createOrReplaceTempView("blocking_map")
-            rdd_pairs = sc.sql("""
+            rdd_pairs = spark.sql("""
                 SELECT DISTINCT a.record_id, b.record_id
                                    FROM blocking_map a
                                    INNER JOIN blocking_map b
                                    USING (block_key)
                                    WHERE a.record_id < b.record_id
             """).collect()
+            list_pairs = [(row[0], row[1]) for row in rdd_pairs]
+            # TODO store pairs in duckdb for later processing
     except Exception as e:
         logger.error(e, exc_info=True)
         raise spark_execution_exception
-    return dict(rdd_pairs)
+    response = {
+        "nb_original_pairs": int(len(original_records_list) * (len(original_records_list) - 1) / 2),
+        "nb_block_pairs": len(list_pairs),
+        "predicates": [str(predicate) for predicate in deduper.predicates],
+        "record_pairs": list_pairs[:50]
+    }
+    return response
