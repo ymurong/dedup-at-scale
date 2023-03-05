@@ -24,16 +24,9 @@ class DedupeData:
         self.__load_input_data__()
 
     def __load_training_data__(self):
-        training_pairs = self.dataset.get_training_pairs()
-        columns = training_pairs.columns
-        nb_features = (len(columns) - 1) // 2
-        column_names = columns[1:1 + nb_features]
-        for train_sample in training_pairs.values:
-            ref1 = train_sample[1:1 + nb_features]
-            ref1_dict = pd.Series(data=ref1, index=column_names).to_dict()
-            ref2 = train_sample[nb_features + 1:2 * nb_features + 1]
-            ref2_dict = pd.Series(data=ref2, index=column_names).to_dict()
-            label = train_sample[-1]
+        training_triplets = self.dataset.get_training_triplet()
+        for train_triplet in training_triplets:
+            ref1_dict, ref2_dict, label = train_triplet
             record = RecordDictPair((ref1_dict, ref2_dict))
             if label is True:
                 self.training_data.match.append(record)
@@ -41,4 +34,4 @@ class DedupeData:
                 self.training_data.distinct.append(record)
 
     def __load_input_data__(self):
-        self.input_data = self.dataset.get_input().to_dict('index')
+        self.input_data = self.dataset.get_collection().to_dict('index')

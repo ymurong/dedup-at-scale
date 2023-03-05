@@ -2,6 +2,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 import json
+from typing import List, Tuple
 
 project_root = Path(__file__).parent.parent
 
@@ -52,7 +53,8 @@ class Dataset:
                select count(1) from train;
            """).fetchone()
 
-    def get_input(self):
+    def get_collection(self) -> pd.DataFrame:
+        """ return the whole collection of bibliography"""
         return self.conn.execute(f"""
             select d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, pj.name, pb.name, pt.name
             from dblp d 
@@ -61,8 +63,12 @@ class Dataset:
             inner join ptype pt on d.ptype_id = pt.id
         """).df()
 
-    def get_training_pairs(self):
-        return self.conn.execute(f"""
+    def get_training_triplet(self) -> List[Tuple[dict, dict, bool]]:
+        """
+        return the labeled training triplets [ref1, ref2, label]
+        """
+        triplets = []
+        training_pairs = self.conn.execute(f"""
                     select distinct on (t.column0) t.column0, 
                     d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, pj.name as pjournal, pb.name as pbooktitle, pt.name as ptype,
                     d2.pid, d2.pkey, d2.pauthor,d2.peditor,d2.ptitle,d2.pyear,d2.paddress,d2.ppublisher,d2.pseries, pj2.name as pjournal2, pb2.name as pbooktitle2, pt2.name  as ptype2,
@@ -77,6 +83,17 @@ class Dataset:
                     left join pbooktitlefull pb2 on d2.pbooktitlefull_id = pb2.id
                     left join pjournalfull pj2 on d2.pjournalfull_id = pj2.id
                 """).df()
+        columns = training_pairs.columns
+        nb_features = (len(columns) - 1) // 2
+        column_names = columns[1:1 + nb_features]
+        for train_sample in training_pairs.values:
+            ref1 = train_sample[1:1 + nb_features]
+            ref1_dict = pd.Series(data=ref1, index=column_names).to_dict()
+            ref2 = train_sample[nb_features + 1:2 * nb_features + 1]
+            ref2_dict = pd.Series(data=ref2, index=column_names).to_dict()
+            label = train_sample[-1]
+            triplets.append((ref1_dict, ref2_dict, label))
+        return triplets
 
     def execute(self, sql):
         return self.conn.execute(sql).df()

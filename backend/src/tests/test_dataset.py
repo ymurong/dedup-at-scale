@@ -22,13 +22,13 @@ def test_dataset_load(db):
     assert total_train[0] == 7972
 
 
-def test_dataset_get_train(db):
+def test_dataset_get_train_triplet(db):
     dataset = Dataset(conn=db, data_path="resources/data")
-    results = dataset.get_training_pairs()
-    assert len(results) == 7972
+    triplets = dataset.get_training_triplet()
+    assert len(triplets) == 7972
 
 
 def test_dataset_get_input(db):
     dataset = Dataset(conn=db, data_path="resources/data")
-    results = dataset.get_input()
+    results = dataset.get_collection()
     assert len(results) == 17165
