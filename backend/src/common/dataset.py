@@ -3,6 +3,7 @@ import duckdb
 import pandas as pd
 import json
 from typing import List, Tuple
+import numpy as np
 
 project_root = Path(__file__).parent.parent
 
@@ -55,13 +56,16 @@ class Dataset:
 
     def get_collection(self) -> pd.DataFrame:
         """ return the whole collection of bibliography"""
-        return self.conn.execute(f"""
-            select d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, pj.name, pb.name, pt.name
+        df_collection = self.conn.execute(f"""
+            select d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, 
+            pj.name as pjournal, pb.name as pbooktitle, pt.name as ptype
             from dblp d 
             left join pbooktitlefull pb on d.pbooktitlefull_id = pb.id
             left join pjournalfull pj on d.pjournalfull_id = pj.id
             inner join ptype pt on d.ptype_id = pt.id
         """).df()
+        df_collection = df_collection.replace({np.nan: None})
+        return df_collection
 
     def get_training_triplet(self) -> List[Tuple[dict, dict, bool]]:
         """

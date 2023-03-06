@@ -79,3 +79,8 @@ The docs page gives access to API interface and allow us to directly test API th
 ```bash
 http://localhost:8000/docs
 ```
+
+## 4. Unit Tests
+```bash
+python -m pytest
+```

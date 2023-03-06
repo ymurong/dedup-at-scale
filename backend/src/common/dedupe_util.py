@@ -34,4 +34,5 @@ class DedupeData:
                 self.training_data.distinct.append(record)
 
     def __load_input_data__(self):
+        df_input = self.dataset.get_collection()
         self.input_data = self.dataset.get_collection().to_dict('index')

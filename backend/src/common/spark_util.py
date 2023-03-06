@@ -19,6 +19,7 @@ def create_spark_session(app_name, spark_master="spark://localhost:7077"):
     spark = SparkSession.builder \
         .appName(app_name) \
         .master(spark_master) \
+        .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
         .getOrCreate()
     try:
         yield spark
