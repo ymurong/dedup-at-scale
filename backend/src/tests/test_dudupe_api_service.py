@@ -1,9 +1,8 @@
 from src.dedupe_api.service import preprocessing
-import json
+from src.common.spark_util import if_spark_running
 import duckdb
 import pytest
 import pandas as pd
-from pathlib import Path
 
 
 @pytest.fixture
@@ -12,6 +11,14 @@ def db():
     return conn
 
 
-def test_preprocessing(db):
-    result = preprocessing(db)
+def test_local_preprocessing(db):
+    result = preprocessing(db, local=True)
     assert type(result) == pd.DataFrame
+    assert len(result) == 17165
+
+
+@pytest.mark.skipif(if_spark_running() is False, reason="spark is not running")
+def test_spark_preprocessing(db):
+    result = preprocessing(db, local=False, slicer=slice(None, 100, None))
+    assert type(result) == pd.DataFrame
+    assert len(result) == 100

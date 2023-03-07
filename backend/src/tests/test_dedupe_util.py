@@ -1,4 +1,5 @@
 from src.common.dedupe_util import DedupeData
+from src.common.schemas import TrainingData
 import json
 import duckdb
 import pytest
@@ -27,3 +28,17 @@ def test_dump_dedupe_data(db):
     # test input data
     assert type(dedupe_data.input_data) == dict
     assert len(dedupe_data.input_data.values()) == 17165
+
+
+def test_local_preprocessing(db):
+    dedupe_data = DedupeData(db=db, data_path=Path("resources/data"), local=True)
+    results = dedupe_data.df_input_data
+    assert len(results) == 17165
+
+
+def test_get_training_data(db):
+    dataset = DedupeData(db=db, data_path=Path("resources/data"), local=True)
+    training_data = dataset.training_data
+    assert type(training_data) == TrainingData
+    assert len(training_data.distinct) == 4027
+    assert len(training_data.match) == 3945

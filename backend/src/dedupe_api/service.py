@@ -5,8 +5,9 @@ from typing import Dict, Tuple, TextIO, List
 from src.resources.conf import SPARK_MASTER, DATA_PATH, DEDUPE_SETTING_PATH, BLOCKING_FIELDS
 from src.dedupe_api.exception import spark_execution_exception
 from src.common.dedupe_util import DedupeData, Dataset
-from src.common.preprocessing import lower_case, year
+from src.common.spark_preprocessing import lower_case, abs_year, inversed_pauthor_ptitle, null_type_fix
 from pathlib import Path
+from pyspark.sql import functions as F
 import dedupe
 import logging
 import io
@@ -16,17 +17,29 @@ logger = logging.getLogger(__name__)
 project_root = Path(__file__).parent.parent
 
 
-def preprocessing(conn: DuckDBPyConnection) -> pd.DataFrame:
+def preprocessing(conn: DuckDBPyConnection, local=True, slicer=slice(None, None, None)) -> pd.DataFrame:
+    """
+    if local is True, then DedupeData class will preprocess it locally,
+    otherwise unpreprocessed data will be fed to spark
+    """
     # ## load data
-    dataset = Dataset(conn=conn, data_path=DATA_PATH)
-    df_collection: pd.DataFrame = dataset.get_collection()[:4]
+    dedupe_data = DedupeData(db=conn, data_path=DATA_PATH, local=local)
+    df_collection: pd.DataFrame = dedupe_data.df_input_data[slicer]
+
+    if local:
+        return df_collection
 
     # create spark session
     try:
         with create_spark_session("dedupe_preprocessing", spark_master=SPARK_MASTER) as spark:
             # spark computation
-            dfs_collection = spark.createDataFrame(df_collection)
-            df_collection = dfs_collection.transform(lower_case).transform(year).toPandas()
+            sdf_collection = spark.createDataFrame(df_collection).repartition(8, "pid")
+            sdf_collection = inversed_pauthor_ptitle(spark, sdf_collection)
+            sdf_collection = sdf_collection.transform(lower_case) \
+                .transform(abs_year)
+            sdf_collection2 = sdf_collection.transform(null_type_fix)
+            # parquet will write to one of the worker
+            sdf_collection2.coalesce(1).write.mode("overwrite").parquet("file:///tmp/collection_parquet")
     except Exception as e:
         logger.error(e, exc_info=True)
         raise spark_execution_exception

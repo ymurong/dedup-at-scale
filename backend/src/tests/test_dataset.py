@@ -2,6 +2,7 @@ import duckdb
 import pytest
 
 from src.common.dataset import Dataset
+from src.common.local_preprocessing import inversed_pauthor_ptitle
 
 
 @pytest.fixture
@@ -20,12 +21,6 @@ def test_dataset_load(db):
     assert total_refs[0] == 17165
     assert total_ptypes[0] == 9
     assert total_train[0] == 7972
-
-
-def test_dataset_get_train_triplet(db):
-    dataset = Dataset(conn=db, data_path="resources/data")
-    triplets = dataset.get_training_triplet()
-    assert len(triplets) == 7972
 
 
 def test_dataset_get_input(db):
