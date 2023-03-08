@@ -12,5 +12,7 @@ def db():
 
 
 if __name__ == '__main__':
-    predicates = train_predicates(db(), reuse_setting=True)
+    predicates = train_predicates(db(), reuse_setting=False)
     assert type(predicates) == list
+    assert len(predicates) > 0
+    print(predicates)

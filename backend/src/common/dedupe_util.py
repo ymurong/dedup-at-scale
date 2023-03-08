@@ -1,14 +1,15 @@
 import logging
 
 import pandas as pd
-from .schemas import TrainingData, RecordDictPair
+from .schemas import TrainingData, RecordDictPair, RecordSet
 from pathlib import Path
 from .dataset import Dataset
-from .local_preprocessing import lower_case, inversed_pauthor_ptitle, abs_year, string_normalize
+from .local_preprocessing import inversed_pauthor_ptitle, abs_year, string_normalize, pauthor_to_set
 from typing import List, Tuple
 from src.resources.conf import DATA_PATH
 from src.common.exception import missing_clean_collection_data_exception
 import duckdb
+import ast
 
 project_root = Path(__file__).parent.parent
 logger = logging.getLogger(__name__)
@@ -51,6 +52,8 @@ class DedupeData:
         training_triplets = self.__get_training_triplet__()
         for train_triplet in training_triplets:
             ref1_dict, ref2_dict, label = train_triplet
+            ref1_dict["pauthor"] = RecordSet(ref1_dict["pauthor"].split("|"))
+            ref2_dict["pauthor"] = RecordSet(ref2_dict["pauthor"].split("|"))
             record = RecordDictPair((ref1_dict, ref2_dict))
             if label is True:
                 self.training_data.match.append(record)

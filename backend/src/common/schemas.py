@@ -9,10 +9,21 @@ class RecordDictPair(tuple[RecordDict, RecordDict]):
     pass
 
 
+class RecordSet(tuple):
+    pass
+
+
 def record_dict_pair_json_encoder(record_tuple):
     return {
         "__class__": "tuple",
         "__value__": [record_tuple[0], record_tuple[1]]
+    }
+
+
+def record_set_json_encoder(record_tuple):
+    return {
+        "__class__": "tuple",
+        "__value__": list(record_tuple)
     }
 
 
@@ -32,7 +43,8 @@ class BaseModel(PydanticBaseModel):
         json_dumps = orjson_dumps
         json_loads = orjson.loads
         json_encoders = {
-            RecordDictPair: record_dict_pair_json_encoder
+            RecordDictPair: record_dict_pair_json_encoder,
+            RecordSet: record_set_json_encoder
         }
 
 

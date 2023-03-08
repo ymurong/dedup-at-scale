@@ -74,7 +74,7 @@ def train_predicates(conn: DuckDBPyConnection, reuse_setting=True) -> List[str]:
     deduper = dedupe.Dedupe(BLOCKING_FIELDS)
 
     with io.StringIO(training_data) as f_training_data:
-        deduper.prepare_training(input_data, f_training_data)
+        deduper.prepare_training(input_data)
 
     # Using the examples we just labeled, train the deduper and learn
     # blocking predicates

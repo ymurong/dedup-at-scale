@@ -2,6 +2,16 @@ import pandas as pd
 from unidecode import unidecode
 
 
+def pauthor_to_set(input_df: pd.DataFrame) -> pd.DataFrame:
+    def tokenize_pauthor(cell):
+        tokens = tuple(cell.split("|"))
+        return tokens
+
+    input_df.loc(axis=1)[["pauthor"]] = input_df.loc(axis=1)[["pauthor"]] \
+        .applymap(tokenize_pauthor)
+    return input_df
+
+
 def string_normalize(input_df: pd.DataFrame) -> pd.DataFrame:
     # 1.Remove whitespace around the string
     columns_to_normalize = ["pauthor", "ptitle", "pjournal", "pbooktitle", "ptype"]
