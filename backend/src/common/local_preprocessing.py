@@ -13,7 +13,7 @@ def string_normalize(input_df: pd.DataFrame) -> pd.DataFrame:
 
     # 3. Remove all punctuation and control characters
     input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize] \
-        .apply(lambda col: col.str.replace('[^A-Za-z\s|]+', ''))
+        .apply(lambda col: col.str.replace('[^A-Za-z\s|]+', '', regex=True))
 
     # 4. ascii transformation
     input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize] \
@@ -56,6 +56,6 @@ def inversed_pauthor_ptitle(input_df: pd.DataFrame) -> pd.DataFrame:
     df_possible_wrong1 = input_df[(input_df["pauthor"].str.contains("^[^\|]+[^.]$"))
                                   & (input_df["ptitle"].str.contains("^[^\|]+[^.]$"))]
     df_must_wrong3 = df_possible_wrong1[df_possible_wrong1["pauthor"].str.contains(stop_words_catcher_regex)]
-    wrong_row_index = set([*df_must_wrong1.index.values, *df_must_wrong2.index.values, *df_must_wrong3.index.values])
+    wrong_row_index = list({*df_must_wrong1.index.values, *df_must_wrong2.index.values, *df_must_wrong3.index.values})
     input_df.loc[wrong_row_index, ["pauthor", "ptitle"]] = input_df.loc[wrong_row_index, ["ptitle", "pauthor"]].values
     return input_df

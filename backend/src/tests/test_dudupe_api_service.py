@@ -1,4 +1,4 @@
-from src.dedupe_api.service import preprocessing
+from src.dedupe_api.service import preprocessing, train_predicates
 from src.common.spark_util import if_spark_running
 import duckdb
 import pytest
@@ -22,3 +22,8 @@ def test_spark_preprocessing(db):
     result = preprocessing(db, local=False, slicer=slice(None, 100, None))
     assert type(result) == pd.DataFrame
     assert len(result) == 100
+
+
+def test_train_predicates(db):
+    predicates = train_predicates(db, reuse_setting=True)
+    assert type(predicates) == list
