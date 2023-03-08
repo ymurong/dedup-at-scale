@@ -4,7 +4,7 @@ import pandas as pd
 from .schemas import TrainingData, RecordDictPair
 from pathlib import Path
 from .dataset import Dataset
-from .local_preprocessing import lower_case, inversed_pauthor_ptitle, abs_year
+from .local_preprocessing import lower_case, inversed_pauthor_ptitle, abs_year, string_normalize
 from typing import List, Tuple
 from src.resources.conf import DATA_PATH
 from src.common.exception import missing_clean_collection_data_exception
@@ -43,8 +43,8 @@ class DedupeData:
 
     def __local_preprocessing__(self):
         """transform the data and write to resources/data"""
-        self.df_input_data = self.df_input_data.transform(inversed_pauthor_ptitle).transform(lower_case).transform(
-            abs_year)
+        self.df_input_data = self.df_input_data.transform(inversed_pauthor_ptitle).transform(
+            abs_year).transform(string_normalize)
         self.df_input_data.to_csv(project_root / DATA_PATH / "collection.csv", index=True, header=True)
 
     def __load_training_data__(self):

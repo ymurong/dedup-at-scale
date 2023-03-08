@@ -1,4 +1,33 @@
 import pandas as pd
+from unidecode import unidecode
+
+
+def string_normalize(input_df: pd.DataFrame) -> pd.DataFrame:
+    # 1.Remove whitespace around the string
+    columns_to_normalize = ["pauthor", "ptitle", "pjournal", "pbooktitle", "ptype"]
+    input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize].apply(
+        lambda col: col.str.strip())
+
+    # 2.Lowercase the string
+    input_df = lower_case(input_df)
+
+    # 3. Remove all punctuation and control characters
+    input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize] \
+        .apply(lambda col: col.str.replace('[^A-Za-z\s|]+', ''))
+
+    # 4. ascii transformation
+    input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize] \
+        .applymap(lambda cell: unidecode(cell) if cell else cell)
+
+    # 5. tokenize
+    def tokenize_pauthor(cell):
+        sorted_tokens = sorted(cell.split("|"))
+        return "|".join(sorted_tokens)
+
+    input_df.loc(axis=1)[["pauthor"]] = input_df.loc(axis=1)[["pauthor"]] \
+        .applymap(tokenize_pauthor)
+
+    return input_df
 
 
 def lower_case(input_df: pd.DataFrame) -> pd.DataFrame:

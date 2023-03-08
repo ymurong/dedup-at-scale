@@ -4,7 +4,7 @@ import json
 import duckdb
 import pytest
 from pathlib import Path
-
+project_root = Path(__file__).parent.parent
 
 @pytest.fixture
 def db():
@@ -42,3 +42,6 @@ def test_get_training_data(db):
     assert type(training_data) == TrainingData
     assert len(training_data.distinct) == 4027
     assert len(training_data.match) == 3945
+    training_data_json_object = json.loads(training_data.json())
+    with open(project_root/"resources/data/training_data.json", mode="w") as file:
+        file.write(json.dumps(training_data_json_object, indent=4))
