@@ -1,15 +1,13 @@
 from fastapi import FastAPI, Request
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-from logging.config import dictConfig
 from src.example import example_app
+from src.dedupe_api import dedupe_app
 from src.resources.logging_conf import logging_config
-import logging
 import time
-import os
-import sys
+import logging.config
 
-dictConfig(logging_config)
+logging.config.dictConfig(logging_config)
 logger = logging.getLogger(__name__)
 
 # create FastAPI application
@@ -44,6 +42,7 @@ app.add_middleware(
 )
 
 app.include_router(example_app, prefix='/example', tags=['example'])
+app.include_router(dedupe_app, prefix='/dedupe', tags=['dedupe'])
 
 if __name__ == '__main__':
-    uvicorn.run('run:app', host='0.0.0.0', port=8000, reload=True)
+    uvicorn.run('run:app', host='0.0.0.0', port=8000, reload=False)

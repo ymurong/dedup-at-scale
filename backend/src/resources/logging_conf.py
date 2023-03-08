@@ -18,7 +18,12 @@ logging_config = {
         }
     },
     "loggers": {
-        "transactions_api": {
+        "dedupe": {
+            "handlers": ["console"],
+            "level": "INFO",
+            # "propagate": False
+        },
+        "main": {
             "handlers": ["console"],
             "level": LOG_LEVEL,
             # "propagate": False

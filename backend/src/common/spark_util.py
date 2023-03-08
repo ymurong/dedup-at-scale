@@ -1,3 +1,6 @@
+import os
+
+import pyspark.sql.session
 from pyspark.sql import SparkSession
 from contextlib import contextmanager
 
@@ -15,12 +18,19 @@ def create_spark_session_local():
 
 
 @contextmanager
-def create_spark_session(app_name, spark_master="spark://localhost:7077"):
+def create_spark_session(app_name, spark_master="spark://localhost:7077") -> SparkSession:
     spark = SparkSession.builder \
         .appName(app_name) \
         .master(spark_master) \
+        .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
         .getOrCreate()
     try:
         yield spark
     finally:
         spark.stop()
+
+
+def if_spark_running():
+    if os.environ.get("IF_SPARK_RUNNING") is None:
+        return False
+    return True
