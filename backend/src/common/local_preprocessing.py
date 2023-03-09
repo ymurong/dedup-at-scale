@@ -4,8 +4,8 @@ from unidecode import unidecode
 
 def pauthor_to_set(input_df: pd.DataFrame) -> pd.DataFrame:
     def tokenize_pauthor(cell):
-        tokens = tuple(cell.split("|"))
-        return tokens
+        author_set = tuple([author for author in cell.split("|")])
+        return author_set
 
     input_df.loc(axis=1)[["pauthor"]] = input_df.loc(axis=1)[["pauthor"]] \
         .applymap(tokenize_pauthor)

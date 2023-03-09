@@ -2,11 +2,12 @@ import pandas as pd
 from duckdb import DuckDBPyConnection
 from src.common.spark_util import create_spark_session
 from typing import Dict, Tuple, TextIO, List
-from src.resources.conf import SPARK_MASTER, DATA_PATH, DEDUPE_SETTING_PATH, BLOCKING_FIELDS
+from src.resources.conf import SPARK_MASTER, DATA_PATH, DEDUPE_SETTING_PATH
 from src.dedupe_api.exception import spark_execution_exception
 from src.common.dedupe_util import DedupeData, Dataset
 from src.common.spark_preprocessing import lower_case, abs_year, inversed_pauthor_ptitle, null_type_fix
 from pathlib import Path
+from src.common.local_preprocessing import pauthor_to_set
 from pyspark.sql import functions as F
 import dedupe
 import logging
@@ -65,21 +66,39 @@ def train_predicates(conn: DuckDBPyConnection, reuse_setting=True) -> List[str]:
     # retrain the model, regenerate setting file and return the predicates
     # ## load data
     dedupe_data = DedupeData(db=conn, data_path=DATA_PATH)
-    input_data: dict = dedupe_data.input_data
-    training_data: str = dedupe_data.training_data.json()
+    input_data: dict = dedupe_data.df_input_data.transform(pauthor_to_set).to_dict('index')
+    training_file = project_root / "resources/data/training_data.json"
 
     # ## train dedupe
 
+    def pauthors(input_data):
+        for record in input_data.values():
+            yield record['pauthor']
+
+    BLOCKING_FIELDS = [
+        {'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
+        {'field': 'ptitle', 'type': 'String'},
+    ]
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(BLOCKING_FIELDS)
 
-    with io.StringIO(training_data) as f_training_data:
-        deduper.prepare_training(input_data)
+    with open(training_file, "r") as f_training_data:
+        deduper.prepare_training(input_data, f_training_data)
+
+    # # use 'y', 'n' and 'u' keys to flag duplicates
+    # # press 'f' when you are finished
+    # print('starting active labeling...')
+    # dedupe.console_label(deduper)
 
     # Using the examples we just labeled, train the deduper and learn
+
     # blocking predicates
     logger.info("dedupe start training predicates... ")
     deduper.train()
+
+    # When finished, save our training away to disk
+    with open(training_file, 'w') as tf:
+        deduper.write_training(tf)
 
     # Save our setting file to disk
     logger.info("writing dedupe setting file to disk ... ")

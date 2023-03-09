@@ -23,7 +23,7 @@ def record_dict_pair_json_encoder(record_tuple):
 def record_set_json_encoder(record_tuple):
     return {
         "__class__": "tuple",
-        "__value__": list(record_tuple)
+        "__value__": [author for author in record_tuple]
     }
 
 

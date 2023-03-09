@@ -9,6 +9,7 @@ from typing import List, Tuple
 from src.resources.conf import DATA_PATH
 from src.common.exception import missing_clean_collection_data_exception
 import duckdb
+import json
 import ast
 
 project_root = Path(__file__).parent.parent
@@ -29,7 +30,6 @@ class DedupeData:
         self.df_input_data: pd.DataFrame = None
         self.local_preprocessing = local
         self.__load__()
-        self.input_data = self.df_input_data.to_dict('index')
 
     def __load__(self):
         """load dataset"""
@@ -37,7 +37,9 @@ class DedupeData:
         self.__load_input_data__()
         if self.local_preprocessing:
             self.__local_preprocessing__()
+        self.__dump_input_data__()
         self.__load_training_data__()
+        self.__dump_training_data__()
 
     def __load_input_data__(self):
         self.df_input_data = self.dataset.get_collection()
@@ -46,14 +48,16 @@ class DedupeData:
         """transform the data and write to resources/data"""
         self.df_input_data = self.df_input_data.transform(inversed_pauthor_ptitle).transform(
             abs_year).transform(string_normalize)
+
+    def __dump_input_data__(self):
         self.df_input_data.to_csv(project_root / DATA_PATH / "collection.csv", index=True, header=True)
 
     def __load_training_data__(self):
         training_triplets = self.__get_training_triplet__()
         for train_triplet in training_triplets:
             ref1_dict, ref2_dict, label = train_triplet
-            ref1_dict["pauthor"] = RecordSet(ref1_dict["pauthor"].split("|"))
-            ref2_dict["pauthor"] = RecordSet(ref2_dict["pauthor"].split("|"))
+            ref1_dict["pauthor"] = RecordSet(tuple(ref1_dict["pauthor"].split("|")))
+            ref2_dict["pauthor"] = RecordSet(tuple(ref2_dict["pauthor"].split("|")))
             record = RecordDictPair((ref1_dict, ref2_dict))
             if label is True:
                 self.training_data.match.append(record)
@@ -94,3 +98,8 @@ class DedupeData:
             label = train_sample[-1]
             triplets.append((ref1_dict, ref2_dict, label))
         return triplets
+
+    def __dump_training_data__(self):
+        training_data_json_object = json.loads(self.training_data.json())
+        with open(project_root / "resources/data/training_data.json", mode="w") as file:
+            json.dump(training_data_json_object, file, ensure_ascii=True)
