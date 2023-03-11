@@ -84,3 +84,10 @@ http://localhost:8000/docs
 ```bash
 python -m pytest
 ```
+
+## 5. Train Dedupe
+Make sure you have set up 2.1 before running the following command
+```bash
+source venv/bin/activate
+python main_train_dedupe.py
+```

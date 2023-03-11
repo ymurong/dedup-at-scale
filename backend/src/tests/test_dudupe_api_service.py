@@ -1,4 +1,6 @@
-from src.dedupe_api.service import preprocessing, train_predicates
+import dedupe
+
+from src.dedupe_api.service import preprocessing, train_dedupe
 from src.common.spark_util import if_spark_running
 import duckdb
 import pytest
@@ -24,6 +26,6 @@ def test_spark_preprocessing(db):
     assert len(result) == 100
 
 
-def test_train_predicates(db):
-    predicates = train_predicates(db, reuse_setting=True)
-    assert type(predicates) == list
+def test_train_dedupe(db):
+    deduper = train_dedupe(db, reuse_setting=True)
+    assert type(deduper) == dedupe.StaticDedupe

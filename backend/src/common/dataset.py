@@ -2,27 +2,30 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 import json
-from typing import List, Tuple
 import numpy as np
 
 project_root = Path(__file__).parent.parent
 
 
 class Dataset:
+    """This class is in charge of loading all data to duckdb"""
+
     def __init__(self, conn: duckdb.DuckDBPyConnection, data_path: Path):
         self.data_path = data_path
         self.conn = conn
-        self.__load__()
+        self._load()
 
-    def __load__(self):
+    def _load(self):
         data_files = project_root / self.data_path / 'dblp-*.csv'
         pbooktitlefull = project_root / self.data_path / 'pbooktitlefull.json'
         pjournalfull = project_root / self.data_path / 'pjournalfull.json'
         ptype = project_root / self.data_path / 'ptype.json'
         train = project_root / self.data_path / 'train.csv'
+        validation = project_root / self.data_path / 'validation_hidden.csv'
+        test = project_root / self.data_path / 'test_hidden.csv'
 
         self.conn.execute(f"""
-        CREATE OR REPLACE TABLE dblp AS SELECT * FROM read_csv_auto('{data_files}');
+        CREATE OR REPLACE TABLE dblp AS SELECT * FROM read_csv_auto('{data_files}', header=True);
         """)
         self.conn.execute(f"""
         CREATE OR REPLACE TABLE pbooktitlefull AS SELECT * FROM read_json_auto('{pbooktitlefull}');
@@ -36,7 +39,13 @@ class Dataset:
         CREATE OR REPLACE TABLE ptype AS SELECT * FROM df_ptype;
         """)
         self.conn.execute(f"""
-        CREATE OR REPLACE TABLE train AS SELECT * FROM read_csv_auto('{train}');
+        CREATE OR REPLACE TABLE train AS SELECT * FROM read_csv_auto('{train}', header=True);
+        """)
+        self.conn.execute(f"""
+        CREATE OR REPLACE TABLE validation AS SELECT * FROM read_csv_auto('{validation}', header=True);
+        """)
+        self.conn.execute(f"""
+        CREATE OR REPLACE TABLE test AS SELECT * FROM read_csv_auto('{test}', header=True);
         """)
 
     def get_total_references(self):
@@ -52,6 +61,16 @@ class Dataset:
     def get_total_train(self):
         return self.conn.execute(f"""
                select count(1) from train;
+           """).fetchone()
+
+    def get_total_validation(self):
+        return self.conn.execute(f"""
+               select count(1) from validation;
+           """).fetchone()
+
+    def get_total_test(self):
+        return self.conn.execute(f"""
+               select count(1) from test;
            """).fetchone()
 
     def get_collection(self) -> pd.DataFrame:

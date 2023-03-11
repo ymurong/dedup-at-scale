@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 from duckdb import DuckDBPyConnection
 from src.common.spark_util import create_spark_session
@@ -8,10 +9,7 @@ from src.common.dedupe_util import DedupeData, Dataset
 from src.common.spark_preprocessing import lower_case, abs_year, inversed_pauthor_ptitle, null_type_fix
 from pathlib import Path
 from src.common.local_preprocessing import pauthor_to_set
-from pyspark.sql import functions as F
 import dedupe
-import logging
-import io
 
 logger = logging.getLogger(__name__)
 
@@ -47,21 +45,20 @@ def preprocessing(conn: DuckDBPyConnection, local=True, slicer=slice(None, None,
     return df_collection
 
 
-def train_predicates(conn: DuckDBPyConnection, reuse_setting=True) -> List[str]:
+def train_dedupe(conn: DuckDBPyConnection, reuse_setting=True, classifier=None) -> dedupe.StaticDedupe:
     """
-    Train blocking rules, save it to setting file for later use, and return the trained predicates
-    :param reuse_setting:
-    :param conn:
-    :return: predicates
+    Train blocking rules and classifier, save it to setting file for later use, and return the trained predicates
+    :param conn: duckDBConnection
+    :param reuse_setting: If True then the existing setting (classifier and predicates) will be used
+    :param classifier: sklearn classifier instance
+    :return: trained dedupe.StaticDedupe instance
     """
     # if reuse setting then we will load the existing setting file and prevent from training again
     settings_file = project_root / DEDUPE_SETTING_PATH
     if reuse_setting:
         if settings_file.is_file():
             with open(settings_file, 'rb') as f:
-                deduper = dedupe.StaticDedupe(f)
-                predicates = [str(predicate) for predicate in deduper.predicates]
-                return predicates
+                return dedupe.StaticDedupe(f)
 
     # retrain the model, regenerate setting file and return the predicates
     # ## load data
@@ -78,15 +75,23 @@ def train_predicates(conn: DuckDBPyConnection, reuse_setting=True) -> List[str]:
     BLOCKING_FIELDS = [
         {'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
         {'field': 'ptitle', 'type': 'String'},
+        # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
+        # {'field': 'pjournal', 'type': 'String', 'has missing': True},
+        # {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
+        # {'field': 'ptype', 'type': 'String', 'has missing': True}
     ]
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(BLOCKING_FIELDS)
 
-    with open(training_file, "r") as f_training_data:
-        deduper.prepare_training(input_data, f_training_data)
+    # be default, the classifier is a L2 regularized logistic regression classifier.
+    if classifier is not None:
+        deduper.classifier = classifier
 
-    # # use 'y', 'n' and 'u' keys to flag duplicates
-    # # press 'f' when you are finished
+    with open(training_file, "r") as f_training_data:
+        deduper.prepare_training(input_data, f_training_data, sample_size=10000, blocked_proportion=.9)
+
+    # use 'y', 'n' and 'u' keys to flag duplicates
+    # press 'f' when you are finished
     # print('starting active labeling...')
     # dedupe.console_label(deduper)
 
@@ -105,5 +110,6 @@ def train_predicates(conn: DuckDBPyConnection, reuse_setting=True) -> List[str]:
     with open(settings_file, 'wb') as sf:
         deduper.write_settings(sf)
 
-    predicates = [str(predicate) for predicate in deduper.predicates]
-    return predicates
+    # load static dedupe and return
+    with open(settings_file, 'rb') as f:
+        return dedupe.StaticDedupe(f)
