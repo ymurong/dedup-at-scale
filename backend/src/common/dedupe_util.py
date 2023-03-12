@@ -15,6 +15,7 @@ from typing import Iterator
 project_root = Path(__file__).parent.parent
 logger = logging.getLogger(__name__)
 
+
 class DedupeData:
 
     def __init__(self, db: duckdb.DuckDBPyConnection, data_path: Path, local=True):
@@ -110,6 +111,7 @@ class DedupeData:
                                from {table} t
                                inner join collection d on lower(t.key1) = d.pkey
                                inner join collection d2 on lower(t.key2) = d2.pkey
+                               order by t.column0 ASC
                            """).df()
         columns = pairs.columns
         nb_features = (len(columns) - 1) // 2

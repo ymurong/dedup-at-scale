@@ -1,6 +1,7 @@
 from pydantic import BaseModel as PydanticBaseModel
 from typing import List, Mapping, Any, Tuple, Union, Iterator
 import orjson
+import numpy
 
 RecordDict = Mapping[str, Any]
 RecordDict = Mapping[str, Any]

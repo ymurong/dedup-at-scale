@@ -14,7 +14,5 @@ def db():
 
 if __name__ == '__main__':
     # default classifier is logistic regression
-    estimator = LogisticRegression()
-    # retrain it by setting reuse_setting to False
-    deduper = CustomDedupe(db()).train(reuse_setting=True, classifier=estimator).deduper
-    assert type(deduper) == dedupe.StaticDedupe
+    custom_dedupe = CustomDedupe(db())
+    custom_dedupe(classifier_name="LogisticRegression").scoring()
