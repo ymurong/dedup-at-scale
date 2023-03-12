@@ -4,7 +4,7 @@ from duckdb import DuckDBPyConnection
 from src.dedupe_api.custom_dedupe import CustomDedupe
 from pathlib import Path
 import dedupe
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,6 @@ def train_dedupe(conn: DuckDBPyConnection, reuse_setting=True, classifier=None) 
 
 
 def dedupe_scoring(conn: DuckDBPyConnection):
-    custom_dedupe = CustomDedupe(conn=conn, local_preprocessing=True) \
-        .train(reuse_setting=True, classifier=LinearRegression()) \
-        .scoring()
+    custom_dedupe = CustomDedupe(conn=conn, local_preprocessing=True)
+    custom_dedupe = custom_dedupe(classifier_name="LogisticRegression", reuse_setting=True).scoring()
     return custom_dedupe.df_train_scores, custom_dedupe.df_validation_scores, custom_dedupe.df_test_scores

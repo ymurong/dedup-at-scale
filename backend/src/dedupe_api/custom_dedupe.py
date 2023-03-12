@@ -36,8 +36,9 @@ class CustomDedupe:
         self.df_test_scores: pd.DataFrame = None
         self.clusters = None
 
-    def __call__(self, classifier_name="logistic") -> TCustomDedupe:
+    def __call__(self, classifier_name="LogisticRegression", reuse_setting=True) -> TCustomDedupe:
         self.settings_file = project_root / (DEDUPE_SETTING_PATH + f"_{classifier_name}")
+        self.reuse_setting = reuse_setting
         return self
 
     @staticmethod
@@ -113,6 +114,8 @@ class CustomDedupe:
                 with open(self.settings_file, 'rb') as f:
                     self.deduper = dedupe.StaticDedupe(f)
                     return self
+            else:
+                raise dedupe_missing_setting_exception
 
         # retrain the model, regenerate setting file and return the predicates
         # ## load data

@@ -85,9 +85,17 @@ http://localhost:8000/docs
 python -m pytest
 ```
 
-## 5. Train Dedupe
+## 5. Dedupe Main
+### 5.1 Train Dedupe
 Make sure you have set up 2.1 before running the following command
 ```bash
 source venv/bin/activate
 python main_train_dedupe.py
+```
+
+### 5.2 Use Dedupe to do Scoring
+Make sure you have set up 2.1 before running the following command
+```bash
+source venv/bin/activate
+python main_score_dedupe.py
 ```

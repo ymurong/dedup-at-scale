@@ -5,6 +5,7 @@ from src.common.spark_util import if_spark_running
 import duckdb
 import pytest
 import pandas as pd
+from sklearn.linear_model import LogisticRegression
 
 
 @pytest.fixture
@@ -27,7 +28,7 @@ def test_spark_preprocessing(db):
 
 
 def test_train_dedupe(db):
-    deduper = train_dedupe(db, reuse_setting=True)
+    deduper = train_dedupe(db, reuse_setting=True, classifier=LogisticRegression())
     assert type(deduper) == dedupe.StaticDedupe
 
 
