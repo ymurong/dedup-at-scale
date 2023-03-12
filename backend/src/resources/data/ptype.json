@@ -11,14 +11,14 @@
     "8": 8
   },
   "name": {
-    "0": "\u00e1rticl\u00e9",
+    "0": "article",
     "1": "inproceedings",
-    "2": "inpr\u1edbc\u00e9\u00e9dings",
+    "2": "inproceedings",
     "3": "article",
     "4": "phdthesis",
-    "5": "inc\u1edbll\u00e9cti\u1edbn",
+    "5": "incollection",
     "6": "incollection",
-    "7": "b\u1edb\u1edbk",
+    "7": "book",
     "8": "book"
   }
 }

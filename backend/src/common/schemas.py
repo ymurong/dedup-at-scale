@@ -1,11 +1,23 @@
 from pydantic import BaseModel as PydanticBaseModel
-from typing import List, Mapping, Any
+from typing import List, Mapping, Any, Tuple, Union, Iterator
 import orjson
+import numpy
 
 RecordDict = Mapping[str, Any]
+RecordDict = Mapping[str, Any]
+RecordInt = Tuple[int, RecordDict]
+RecordStr = Tuple[str, RecordDict]
+RecordPairInt = Tuple[RecordInt, RecordInt]
+RecordPairStr = Tuple[RecordStr, RecordStr]
+LabeledRecordPairStr = Tuple[RecordStr, RecordStr, bool]
+RecordPairs = Union[Iterator[RecordPairInt], Iterator[RecordPairStr]]
 
 
 class RecordDictPair(tuple[RecordDict, RecordDict]):
+    pass
+
+
+class RecordSet(tuple):
     pass
 
 
@@ -13,6 +25,13 @@ def record_dict_pair_json_encoder(record_tuple):
     return {
         "__class__": "tuple",
         "__value__": [record_tuple[0], record_tuple[1]]
+    }
+
+
+def record_set_json_encoder(record_tuple):
+    return {
+        "__class__": "tuple",
+        "__value__": [author for author in record_tuple]
     }
 
 
@@ -32,7 +51,8 @@ class BaseModel(PydanticBaseModel):
         json_dumps = orjson_dumps
         json_loads = orjson.loads
         json_encoders = {
-            RecordDictPair: record_dict_pair_json_encoder
+            RecordDictPair: record_dict_pair_json_encoder,
+            RecordSet: record_set_json_encoder
         }
 
 
