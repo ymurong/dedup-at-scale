@@ -5,7 +5,7 @@ from src.common.spark_util import create_spark_session
 from typing import TypeVar, Union
 from src.resources.conf import SPARK_MASTER, DATA_PATH, DEDUPE_SETTING_PATH
 from src.dedupe_api.exception import spark_execution_exception, dedupe_missing_setting_exception
-from src.common.dedupe_util import DedupeData
+from src.common.dedupe_data import DedupeData
 from src.common.spark_preprocessing import lower_case, abs_year, inversed_pauthor_ptitle, null_type_fix
 from pathlib import Path
 from src.common.local_preprocessing import pauthor_to_set
@@ -133,9 +133,9 @@ class CustomDedupe:
             {'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
             {'field': 'ptitle', 'type': 'String'},
             # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
-            #{'field': 'pjournal', 'type': 'String', 'has missing': True},
+            # {'field': 'pjournal', 'type': 'String', 'has missing': True},
             {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
-            #{'field': 'ptype', 'type': 'String', 'has missing': True}
+            # {'field': 'ptype', 'type': 'String', 'has missing': True}
         ]
 
         # Create a new deduper object and pass our data model to it.

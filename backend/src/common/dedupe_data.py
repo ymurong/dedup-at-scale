@@ -1,5 +1,5 @@
 import logging
-
+import numpy as np
 import pandas as pd
 from .schemas import TrainingData, RecordDictPair, RecordSet, RecordPairs, LabeledRecordPairStr
 from pathlib import Path
@@ -100,8 +100,9 @@ class DedupeData:
     def _dump_training_data(self):
         training_data_json_object = json.loads(self.training_data.json())
         with open(project_root / "resources/data/training_data.json", mode="w") as file:
-            file.write(self.training_data.json())
-            
+            file.write(json.dumps(training_data_json_object, ensure_ascii=True))
+
+
     def _unlabeled_pairs(self, table: str) -> RecordPairs:
         """Return an iterator of RecordPairs given validation table or test table"""
         pairs = self.db.execute(f"""
@@ -113,6 +114,7 @@ class DedupeData:
                                inner join collection d2 on lower(t.key2) = d2.pkey
                                order by t.column0 ASC
                            """).df()
+        pairs = pairs.replace({np.nan: None})
         columns = pairs.columns
         nb_features = (len(columns) - 1) // 2
         column_names = columns[1:1 + nb_features]

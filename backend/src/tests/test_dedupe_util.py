@@ -1,4 +1,4 @@
-from src.common.dedupe_util import DedupeData
+from src.common.dedupe_data import DedupeData
 from src.common.schemas import TrainingData, RecordPairs, LabeledRecordPairStr
 from typing import Iterator
 from types import GeneratorType
