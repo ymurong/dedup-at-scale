@@ -12,8 +12,6 @@ fields = [
 
 deduper = dedupe.Dedupe(fields)
 
-deduper.predicate
-
 deduper.prepare_training(data.T.to_dict())
 dedupe.console_label(deduper)
 

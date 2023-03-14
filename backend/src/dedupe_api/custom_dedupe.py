@@ -12,6 +12,7 @@ from src.common.local_preprocessing import pauthor_to_set
 import dedupe
 from itertools import chain
 from sklearn.base import BaseEstimator
+from sklearn.metrics import accuracy_score
 import numpy
 import os
 
@@ -132,9 +133,9 @@ class CustomDedupe:
             {'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
             {'field': 'ptitle', 'type': 'String'},
             # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
-            # {'field': 'pjournal', 'type': 'String', 'has missing': True},
-            # {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
-            # {'field': 'ptype', 'type': 'String', 'has missing': True}
+            #{'field': 'pjournal', 'type': 'String', 'has missing': True},
+            {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
+            #{'field': 'ptype', 'type': 'String', 'has missing': True}
         ]
 
         # Create a new deduper object and pass our data model to it.
@@ -209,3 +210,13 @@ class CustomDedupe:
         self._cleanup_scores(pair_scores)
         self.clusters = clusters_eval
         return self
+    
+    @staticmethod
+    def training_accuracy(training_scores) -> float:
+        training_data = pd.read_csv(project_root / DATA_PATH / "train.csv")
+
+        y_true = training_data['label']
+        y_pred = training_scores['score'].apply(lambda score: True if score > .5 else False)
+
+        return accuracy_score(y_true, y_pred)
+

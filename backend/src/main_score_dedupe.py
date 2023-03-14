@@ -6,6 +6,8 @@ import dedupe
 from sklearn.linear_model import LogisticRegression
 logging.config.dictConfig(logging_config)
 
+from multiprocessing import freeze_support
+
 
 def db():
     conn = duckdb.connect()
@@ -14,5 +16,6 @@ def db():
 
 if __name__ == '__main__':
     # default classifier is logistic regression
+    freeze_support()
     custom_dedupe = CustomDedupe(db())
     custom_dedupe(classifier_name="LogisticRegression").scoring()

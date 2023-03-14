@@ -100,8 +100,8 @@ class DedupeData:
     def _dump_training_data(self):
         training_data_json_object = json.loads(self.training_data.json())
         with open(project_root / "resources/data/training_data.json", mode="w") as file:
-            json.dump(training_data_json_object, file, ensure_ascii=True)
-
+            file.write(self.training_data.json())
+            
     def _unlabeled_pairs(self, table: str) -> RecordPairs:
         """Return an iterator of RecordPairs given validation table or test table"""
         pairs = self.db.execute(f"""

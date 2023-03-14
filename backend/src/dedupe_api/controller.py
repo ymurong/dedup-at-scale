@@ -28,3 +28,11 @@ def predicates(
         "predicates": predicate_list
     }
     return response
+
+
+@dedupe_app.get("/train_accuracy", response_model=float,
+                description="gets the accuracy of the training")
+def train_accuracy(
+    conn: DuckDBPyConnection = Depends(get_conn)
+):
+    return service.train_accuracy(conn=conn)

@@ -23,3 +23,12 @@ def dedupe_scoring(conn: DuckDBPyConnection):
     custom_dedupe = CustomDedupe(conn=conn, local_preprocessing=True)
     custom_dedupe = custom_dedupe(classifier_name="LogisticRegression", reuse_setting=True).scoring()
     return custom_dedupe.df_train_scores, custom_dedupe.df_validation_scores, custom_dedupe.df_test_scores
+
+
+def train_accuracy(conn: DuckDBPyConnection, reuse_setting=True, classifier=None):
+    """ Very simple method to quickly get the accuracy in the training dataset"""
+    custom_dedupe = CustomDedupe(conn=conn, local_preprocessing=True).train(reuse_setting, classifier)
+    custom_dedupe = custom_dedupe(classifier_name="LogisticRegression", reuse_setting=True).scoring()
+    train_scores = custom_dedupe.df_train_scores
+
+    return CustomDedupe.training_accuracy(train_scores)
