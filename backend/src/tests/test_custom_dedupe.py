@@ -13,3 +13,7 @@ def test_clustering(db):
     custom_dedupe = CustomDedupe(db)
     clusters = custom_dedupe(classifier_name="LogisticRegression", reuse_setting=True).clustering().clusters
     assert clusters is not None
+
+def test_eval(db):
+    custom_dedupe = CustomDedupe(db)
+    custom_dedupe.eval(threshold=0.5)

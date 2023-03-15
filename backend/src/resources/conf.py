@@ -11,6 +11,7 @@ RECORDS_EXAMPLE_DEDUPE_SETTING_PATH = "../resources/csv_example_learned_settings
 # Dedupe App
 DATA_PATH = "resources/data"
 DEDUPE_SETTING_PATH = "resources/data/dedupe_learned_settings"
+TRAIN_SCORE_RESULTS_PATH = "resources/data/train_scoring_results.csv"
 
 BLOCKING_FIELDS_FULL = [
     {'field': 'pauthor', 'type': 'String', 'has missing': True},  # it can be improved as set of authors

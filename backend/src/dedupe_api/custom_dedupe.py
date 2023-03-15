@@ -3,8 +3,9 @@ import pandas as pd
 from duckdb import DuckDBPyConnection
 from src.common.spark_util import create_spark_session
 from typing import TypeVar, Union
-from src.resources.conf import SPARK_MASTER, DATA_PATH, DEDUPE_SETTING_PATH
-from src.dedupe_api.exception import spark_execution_exception, dedupe_missing_setting_exception
+from src.resources.conf import SPARK_MASTER, DATA_PATH, DEDUPE_SETTING_PATH, TRAIN_SCORE_RESULTS_PATH
+from src.dedupe_api.exception import spark_execution_exception, dedupe_missing_setting_exception, \
+    dedupe_missing_train_score_results_exception
 from src.common.dedupe_data import DedupeData
 from src.common.spark_preprocessing import lower_case, abs_year, inversed_pauthor_ptitle, null_type_fix
 from pathlib import Path
@@ -12,6 +13,8 @@ from src.common.local_preprocessing import pauthor_to_set
 import dedupe
 from itertools import chain
 from sklearn.base import BaseEstimator
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, \
+    confusion_matrix, average_precision_score
 import numpy
 import os
 
@@ -29,6 +32,7 @@ class CustomDedupe:
         self.local_preprocessing = local_preprocessing
         self.dedupe_data = DedupeData(db=self.conn, data_path=DATA_PATH, local=self.local_preprocessing)
         self.settings_file = project_root / DEDUPE_SETTING_PATH
+        self.train_scoring_file = project_root / TRAIN_SCORE_RESULTS_PATH
         self.df_collection: pd.DataFrame = None
         self.deduper: dedupe.StaticDedupe = None
         self.df_train_scores: pd.DataFrame = None
@@ -133,7 +137,7 @@ class CustomDedupe:
             {'field': 'ptitle', 'type': 'String'},
             # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
             # {'field': 'pjournal', 'type': 'String', 'has missing': True},
-            {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
+            # {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
             # {'field': 'ptype', 'type': 'String', 'has missing': True}
         ]
 
@@ -208,4 +212,45 @@ class CustomDedupe:
         clusters_eval = list(clusters)
         self._cleanup_scores(pair_scores)
         self.clusters = clusters_eval
+        return self
+
+    def _metrics(self, y_true, y_pred):
+        """transform model metrics into dataframe"""
+        accuracy = accuracy_score(y_true, y_pred)
+
+        precision = precision_score(y_true, y_pred)
+
+        recall = recall_score(y_true, y_pred)
+
+        f1 = f1_score(y_true, y_pred)
+
+        auc = roc_auc_score(y_true, y_pred)
+
+        false_neg = confusion_matrix(y_true, y_pred)[1, 0]
+        false_pos = confusion_matrix(y_true, y_pred)[0, 1]
+        return pd.DataFrame(
+            [[accuracy, precision, recall, f1, auc, false_neg, false_pos]],
+            columns=["accuracy", "precision", "recall", "f1", "auc", "false_neg", "false_pos"])
+
+    def eval(self, threshold=0.5) -> TCustomDedupe:
+        if not self.train_scoring_file.is_file():
+            raise dedupe_missing_train_score_results_exception
+        self.conn.execute(f"""
+        CREATE OR REPLACE TABLE train_scores AS SELECT * FROM read_csv_auto('{self.train_scoring_file}', header=True);
+        """)
+        df_results = self.conn.execute(f"""
+            SELECT t.column0, t.key1, t.key2, t.label,
+            CASE
+                WHEN ts.score > {threshold} THEN TRUE
+                ELSE FALSE
+            END AS prediction
+            FROM train t, train_scores ts
+            WHERE lower(t.key1) = lower(ts.key1)
+            AND lower(t.key2) = lower(ts.key2)
+            """).df()
+        y_pred = df_results["prediction"].values
+        y_true = df_results["label"].values
+        metrics = self._metrics(y_true, y_pred)
+        print("\n")
+        print(metrics.to_string())
         return self
