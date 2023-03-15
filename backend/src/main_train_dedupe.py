@@ -17,8 +17,8 @@ def db():
 
 if __name__ == '__main__':
     # default classifier is logistic regression
-    estimator = LogisticRegression()
+    #estimator = svm.LinearSVC()
     #estimator = CalibratedClassifierCV(svm.LinearSVC())
     # retrain it by setting reuse_setting to False
-    deduper = CustomDedupe(db()).train(reuse_setting=False, classifier=estimator).deduper
+    deduper = CustomDedupe(db()).train(reuse_setting=False).deduper
     assert type(deduper) == dedupe.StaticDedupe

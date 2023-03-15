@@ -16,6 +16,6 @@ def db():
 
 if __name__ == '__main__':
     # default classifier is logistic regression
-    freeze_support()
     custom_dedupe = CustomDedupe(db())
-    custom_dedupe(classifier_name="LogisticRegression").scoring()
+    custom_dedupe = custom_dedupe(classifier_name="LogisticRegression").scoring()
+    print(custom_dedupe.training_metrics())

@@ -12,9 +12,11 @@ from src.common.local_preprocessing import pauthor_to_set
 import dedupe
 from itertools import chain
 from sklearn.base import BaseEstimator
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, recall_score, precision_score
 import numpy
 import os
+from .svm_deduper import SVMDedupe
+
 
 Scores = Union[numpy.memmap, numpy.ndarray]
 
@@ -132,26 +134,27 @@ class CustomDedupe:
         BLOCKING_FIELDS = [
             {'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
             {'field': 'ptitle', 'type': 'String'},
-            # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
-            # {'field': 'pjournal', 'type': 'String', 'has missing': True},
-            {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
-            # {'field': 'ptype', 'type': 'String', 'has missing': True}
+            #{'field': 'pyear', 'type': 'Exact', 'has missing': True},
+            #{'field': 'pjournal', 'type': 'String', 'has missing': True},
+            #{'field': 'pbooktitle', 'type': 'String', 'has missing': True},
+            #{'field': 'ptype', 'type': 'String', 'has missing': True}
         ]
 
         # Create a new deduper object and pass our data model to it.
-        self.deduper = dedupe.Dedupe(BLOCKING_FIELDS)
+        #self.deduper = dedupe.Dedupe(BLOCKING_FIELDS)
+        self.deduper = SVMDedupe(BLOCKING_FIELDS)
 
         # be default, the classifier is a L2 regularized logistic regression classifier.
-        if classifier is not None:
-            self.deduper.classifier = classifier
+        #if classifier is not None:
+        #    self.deduper.classifier = classifier
 
         with open(training_file, "r") as f_training_data:
             self.deduper.prepare_training(input_data, f_training_data, sample_size=10000, blocked_proportion=.9)
 
         # use 'y', 'n' and 'u' keys to flag duplicates
         # press 'f' when you are finished
-        # print('starting active labeling...')
-        # dedupe.console_label(deduper)
+        print('starting active labeling...')
+        dedupe.console_label(self.deduper)
 
         # Using the examples we just labeled, train the deduper and learn
 
@@ -211,12 +214,14 @@ class CustomDedupe:
         self.clusters = clusters_eval
         return self
     
-    @staticmethod
-    def training_accuracy(training_scores) -> float:
+    def training_metrics(self, threshold = .5) -> float:
         training_data = pd.read_csv(project_root / DATA_PATH / "train.csv")
 
         y_true = training_data['label']
-        y_pred = training_scores['score'].apply(lambda score: True if score > .5 else False)
+        y_pred = self.df_train_scores['score'].apply(lambda score: True if score > threshold else False)
 
-        return accuracy_score(y_true, y_pred)
+        return {
+            "accuracy" : accuracy_score(y_true, y_pred),
+            "precision": precision_score(y_true, y_pred), 
+            "recall"   : recall_score(y_true, y_pred) }
 
