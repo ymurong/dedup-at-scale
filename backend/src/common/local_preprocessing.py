@@ -14,20 +14,20 @@ def pauthor_to_set(input_df: pd.DataFrame) -> pd.DataFrame:
 
 def string_normalize(input_df: pd.DataFrame) -> pd.DataFrame:
     # 1.Remove whitespace around the string
-    columns_to_normalize = ["pauthor", "ptitle", "pjournal", "pbooktitle", "ptype"]
+    columns_to_normalize = ["pauthor", "ptitle", "pjournal", "pbooktitle","pjournalfull", "pbooktitlefull", "ptype"]
     input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize].apply(
         lambda col: col.str.strip())
 
     # 2.Lowercase the string
     input_df = lower_case(input_df)
 
-    # 3. Remove all punctuation and control characters
-    input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize] \
-        .apply(lambda col: col.str.replace('[^A-Za-z\s|]+', '', regex=True))
-
-    # 4. ascii transformation
+    # 3. ascii transformation
     input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize] \
         .applymap(lambda cell: unidecode(cell) if cell else cell)
+
+    # 4. Remove all punctuation and control characters
+    input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize] \
+        .apply(lambda col: col.str.replace('[^A-Za-z\s|]+', '', regex=True))
 
     # 5. tokenize
     def tokenize_pauthor(cell):
@@ -36,6 +36,9 @@ def string_normalize(input_df: pd.DataFrame) -> pd.DataFrame:
 
     input_df.loc(axis=1)[["pauthor"]] = input_df.loc(axis=1)[["pauthor"]] \
         .applymap(tokenize_pauthor)
+
+    # 6. nan string to None
+    input_df = input_df.replace({"nan": None})
 
     return input_df
 

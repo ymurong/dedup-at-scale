@@ -17,18 +17,29 @@ class Dataset:
 
     def _load(self):
         data_files = project_root / self.data_path / 'dblp-*.csv'
+        pbooktitle = project_root / self.data_path / 'pbooktitle.json'
         pbooktitlefull = project_root / self.data_path / 'pbooktitlefull.json'
+        pjournal = project_root / self.data_path / 'pjournal.json'
         pjournalfull = project_root / self.data_path / 'pjournalfull.json'
         ptype = project_root / self.data_path / 'ptype.json'
         train = project_root / self.data_path / 'train.csv'
         validation = project_root / self.data_path / 'validation_hidden.csv'
         test = project_root / self.data_path / 'test_hidden.csv'
 
+        with open(pbooktitle, "r") as f:
+            df_booktitle = pd.DataFrame(data=json.load(f))
+
         self.conn.execute(f"""
         CREATE OR REPLACE TABLE dblp AS SELECT * FROM read_csv_auto('{data_files}', header=True);
         """)
         self.conn.execute(f"""
+        CREATE OR REPLACE TABLE pbooktitle AS SELECT * FROM df_booktitle;
+        """)
+        self.conn.execute(f"""
         CREATE OR REPLACE TABLE pbooktitlefull AS SELECT * FROM read_json_auto('{pbooktitlefull}');
+        """)
+        self.conn.execute(f"""
+        CREATE OR REPLACE TABLE pjournal AS SELECT * FROM read_json_auto('{pjournal}');
         """)
         self.conn.execute(f"""
         CREATE OR REPLACE TABLE pjournalfull AS SELECT * FROM read_json_auto('{pjournalfull}');
@@ -77,10 +88,12 @@ class Dataset:
         """ return the whole collection of bibliography"""
         df_collection = self.conn.execute(f"""
             select d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, 
-            pj.name as pjournal, pb.name as pbooktitle, pt.name as ptype
+            pj.name as pjournal, pjf.name as pjournalfull, pb.name as pbooktitle, pbf.name as pbooktitlefull, pt.name as ptype
             from dblp d 
-            left join pbooktitlefull pb on d.pbooktitlefull_id = pb.id
-            left join pjournalfull pj on d.pjournalfull_id = pj.id
+            left join pbooktitle pb on d.pbooktitle_id = pb.id
+            left join pbooktitlefull pbf on d.pbooktitlefull_id = pbf.id
+            left join pjournal pj on d.pjournal_id = pj.id
+            left join pjournalfull pjf on d.pjournalfull_id = pjf.id
             inner join ptype pt on d.ptype_id = pt.id
         """).df()
         df_collection = df_collection.replace({np.nan: None})

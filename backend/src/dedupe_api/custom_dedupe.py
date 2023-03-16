@@ -13,8 +13,9 @@ from src.common.local_preprocessing import pauthor_to_set
 import dedupe
 from itertools import chain
 from sklearn.base import BaseEstimator
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, \
-    confusion_matrix, average_precision_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
+    confusion_matrix
+from thefuzz import fuzz
 import numpy
 import os
 
@@ -157,9 +158,20 @@ class CustomDedupe:
             for record in input_data.values():
                 yield record['pauthor']
 
+        def ptitles(input_data):
+            for record in input_data.values():
+                yield record['ptitle']
+
+        def norm_partial_token_sort_ratio(*args, **kwargs):
+            return fuzz.partial_token_sort_ratio(*args, **kwargs) / 100
+
         BLOCKING_FIELDS = [
             {'variable name': 'pauthor', 'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
-            {'variable name': 'ptitle_text', 'field': 'ptitle', 'type': 'Text'},
+            {'variable name': 'ptitle_text', 'field': 'ptitle', 'type': 'Text', 'corpus': ptitles(input_data)},
+            # {'type': 'Interaction', 'interaction variables': ['pauthor', 'ptitle_text']},
+            # {'variable name': 'ptitle_token_set_ratio', 'field': 'ptitle', 'type': 'Custom', 'comparator': fuzz.token_set_ratio},
+            {'variable name': 'ptitle_token_sort_ratio', 'field': 'ptitle', 'type': 'Custom',
+             'comparator': norm_partial_token_sort_ratio},
             # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
             # {'field': 'pjournal', 'type': 'String', 'has missing': True},
             # {'field': 'pbooktitle', 'type': 'String', 'has missing': True},

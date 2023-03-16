@@ -100,15 +100,14 @@ class DedupeData:
     def _dump_training_data(self):
         training_data_json_object = json.loads(self.training_data.json())
         with open(project_root / "resources/data/training_data.json", mode="w") as file:
-            file.write(json.dumps(training_data_json_object, ensure_ascii=True))
-
+            file.write(json.dumps(training_data_json_object, ensure_ascii=True, indent=2))
 
     def _unlabeled_pairs(self, table: str) -> RecordPairs:
         """Return an iterator of RecordPairs given validation table or test table"""
         pairs = self.db.execute(f"""
                                select distinct on (t.column0) t.column0, 
-                               d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, d.pjournal,d.pbooktitle, d.ptype,
-                               d2.pid, d2.pkey, d2.pauthor,d2.peditor,d2.ptitle,d2.pyear,d2.paddress,d2.ppublisher,d2.pseries, d2.pjournal, d2.pbooktitle, d2.ptype
+                               d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, d.pjournal,d.pjournalfull, d.pbooktitle, d.pbooktitlefull, d.ptype,
+                               d2.pid, d2.pkey, d2.pauthor,d2.peditor,d2.ptitle,d2.pyear,d2.paddress,d2.ppublisher,d2.pseries, d2.pjournal,d2.pjournalfull, d2.pbooktitle, d2.pbooktitlefull, d2.ptype
                                from {table} t
                                inner join collection d on lower(t.key1) = d.pkey
                                inner join collection d2 on lower(t.key2) = d2.pkey
