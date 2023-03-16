@@ -41,6 +41,7 @@ class CustomDedupe:
         self.clusters = None
 
     def __call__(self, classifier_name="LogisticRegression", reuse_setting=True) -> TCustomDedupe:
+        self.classifier_name = classifier_name
         self.settings_file = project_root / (DEDUPE_SETTING_PATH + f"_{classifier_name}")
         self.reuse_setting = reuse_setting
         return self
@@ -72,6 +73,30 @@ class CustomDedupe:
 
         for singleton in singletons:
             yield (singleton,), (1.0,)
+
+    @staticmethod
+    def _metrics(y_true, y_pred):
+        """transform model metrics into dataframe"""
+        accuracy = accuracy_score(y_true, y_pred)
+
+        precision = precision_score(y_true, y_pred)
+
+        recall = recall_score(y_true, y_pred)
+
+        f1 = f1_score(y_true, y_pred)
+
+        auc = roc_auc_score(y_true, y_pred)
+
+        false_neg = confusion_matrix(y_true, y_pred)[1, 0]
+        false_pos = confusion_matrix(y_true, y_pred)[0, 1]
+        return pd.DataFrame(
+            [[accuracy, precision, recall, f1, auc, false_neg, false_pos]],
+            columns=["accuracy", "precision", "recall", "f1", "auc", "false_neg", "false_pos"])
+
+    def _dump_results(self, df_scores, name="validation", threshold=0.5):
+        y_pred = df_scores["score"] > threshold
+        y_pred.to_csv(project_root / DATA_PATH / f"{self.classifier_name}_{name}_results.csv", index=False,
+                      header=False)
 
     def preprocessing(self, slicer=slice(None, None, None)) -> TCustomDedupe:
         """
@@ -133,8 +158,8 @@ class CustomDedupe:
                 yield record['pauthor']
 
         BLOCKING_FIELDS = [
-            {'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
-            {'field': 'ptitle', 'type': 'String'},
+            {'variable name': 'pauthor', 'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
+            {'variable name': 'ptitle_text', 'field': 'ptitle', 'type': 'Text'},
             # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
             # {'field': 'pjournal', 'type': 'String', 'has missing': True},
             # {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
@@ -149,7 +174,7 @@ class CustomDedupe:
             self.deduper.classifier = classifier
 
         with open(training_file, "r") as f_training_data:
-            self.deduper.prepare_training(input_data, f_training_data, sample_size=10000, blocked_proportion=.9)
+            self.deduper.prepare_training(input_data, f_training_data)
 
         # use 'y', 'n' and 'u' keys to flag duplicates
         # press 'f' when you are finished
@@ -160,7 +185,7 @@ class CustomDedupe:
 
         # blocking predicates
         logger.info("dedupe start training predicates... ")
-        self.deduper.train()
+        self.deduper.train(index_predicates=False)
 
         # When finished, save our training away to disk
         with open(training_file, 'w') as tf:
@@ -196,6 +221,9 @@ class CustomDedupe:
         self.df_validation_scores.to_csv(project_root / DATA_PATH / "validation_hidden_scoring_results.csv", index=True)
         self.df_test_scores.to_csv(project_root / DATA_PATH / "test_hidden_scoring_results.csv", index=True)
 
+        self._dump_results(df_scores=self.df_validation_scores, name="validation")
+        self._dump_results(df_scores=self.df_test_scores, name="test")
+
         return self
 
     def clustering(self) -> TCustomDedupe:
@@ -213,24 +241,6 @@ class CustomDedupe:
         self._cleanup_scores(pair_scores)
         self.clusters = clusters_eval
         return self
-
-    def _metrics(self, y_true, y_pred):
-        """transform model metrics into dataframe"""
-        accuracy = accuracy_score(y_true, y_pred)
-
-        precision = precision_score(y_true, y_pred)
-
-        recall = recall_score(y_true, y_pred)
-
-        f1 = f1_score(y_true, y_pred)
-
-        auc = roc_auc_score(y_true, y_pred)
-
-        false_neg = confusion_matrix(y_true, y_pred)[1, 0]
-        false_pos = confusion_matrix(y_true, y_pred)[0, 1]
-        return pd.DataFrame(
-            [[accuracy, precision, recall, f1, auc, false_neg, false_pos]],
-            columns=["accuracy", "precision", "recall", "f1", "auc", "false_neg", "false_pos"])
 
     def eval(self, threshold=0.5) -> TCustomDedupe:
         if not self.train_scoring_file.is_file():
