@@ -4,7 +4,7 @@ import pandas as pd
 from .schemas import TrainingData, RecordDictPair, RecordSet, RecordPairs, LabeledRecordPairStr
 from pathlib import Path
 from .dataset import Dataset
-from .local_preprocessing import inversed_pauthor_ptitle, abs_year, string_normalize, pauthor_to_set
+from .local_preprocessing import inversed_pauthor_ptitle, abs_year, string_normalize, impute
 from typing import List, Tuple
 from src.resources.conf import DATA_PATH
 from src.common.exception import missing_clean_collection_data_exception
@@ -27,9 +27,14 @@ class DedupeData:
         self.db = db
         self.local_preprocessing = local
         self.training_data = TrainingData(match=[], distinct=[])
+        self.cleaned_collection_path = project_root / self.data_path / 'collection.csv'
         self.df_input_data: pd.DataFrame = None
         self._training_triplets = None
         self._load()
+
+    def __call__(self, cleaned_collection_path=None):
+        if cleaned_collection_path:
+            self.cleaned_collection_path = cleaned_collection_path
 
     def _load(self):
         self.dataset = Dataset(conn=self.db, data_path=self.data_path)
@@ -46,17 +51,16 @@ class DedupeData:
     def _local_preprocessing(self):
         """Transform the data and write to resources/data"""
         self.df_input_data = self.df_input_data.transform(inversed_pauthor_ptitle).transform(
-            abs_year).transform(string_normalize)
+            abs_year).transform(string_normalize).transform(impute)
 
     def _dump_input_data(self):
         self.df_input_data.to_csv(project_root / DATA_PATH / "collection.csv", index=True, header=True)
 
     def _get_training_triplet(self) -> List[Tuple[dict, dict, bool]]:
         """Return the labeled training triplets (ref1, ref2, label)"""
-        cleaned_collection = project_root / self.data_path / 'collection.csv'
-        if self.local_preprocessing is True or cleaned_collection.is_file():
+        if self.local_preprocessing is True or self.cleaned_collection_path.is_file():
             self.db.execute(f"""
-               CREATE OR REPLACE TABLE collection AS SELECT * FROM read_csv_auto('{cleaned_collection}');
+               CREATE OR REPLACE TABLE collection AS SELECT * FROM read_csv_auto('{self.cleaned_collection_path}');
                """)
         else:
             logger.error("Cleaned collection data is missing under resources/data directory!")
@@ -65,8 +69,8 @@ class DedupeData:
         triplets = []
         training_pairs = self.db.execute(f"""
                        select distinct on (t.column0) t.column0, 
-                       d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, d.pjournal,d.pbooktitle, d.ptype,
-                       d2.pid, d2.pkey, d2.pauthor,d2.peditor,d2.ptitle,d2.pyear,d2.paddress,d2.ppublisher,d2.pseries, d2.pjournal, d2.pbooktitle, d2.ptype,
+                       d.pid, d.pkey, d.pauthor,d.peditor,d.ptitle,d.pyear,d.paddress,d.ppublisher,d.pseries, d.pjournal,d.pjournalfull, d.pbooktitle, d.pbooktitlefull, d.ptype,
+                       d2.pid, d2.pkey, d2.pauthor,d2.peditor,d2.ptitle,d2.pyear,d2.paddress,d2.ppublisher,d2.pseries, d2.pjournal, d2.pjournalfull, d2.pbooktitle, d2.pbooktitlefull, d2.ptype,
                        t.label
                        from train t 
                        inner join collection d on lower(t.key1) = d.pkey

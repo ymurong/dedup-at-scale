@@ -20,3 +20,4 @@ if __name__ == '__main__':
     custom_dedupe = CustomDedupe(db())
     custom_dedupe(classifier_name=classifier_name).scoring()
     custom_dedupe.eval(threshold=0.5)
+    custom_dedupe.error_analysis_report(threshold=0.5)

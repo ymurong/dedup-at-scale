@@ -1,5 +1,8 @@
 import pandas as pd
 from unidecode import unidecode
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import make_pipeline
 
 
 def pauthor_to_set(input_df: pd.DataFrame) -> pd.DataFrame:
@@ -14,7 +17,7 @@ def pauthor_to_set(input_df: pd.DataFrame) -> pd.DataFrame:
 
 def string_normalize(input_df: pd.DataFrame) -> pd.DataFrame:
     # 1.Remove whitespace around the string
-    columns_to_normalize = ["pauthor", "ptitle", "pjournal", "pbooktitle","pjournalfull", "pbooktitlefull", "ptype"]
+    columns_to_normalize = ["pauthor", "ptitle", "pjournal", "pbooktitle", "pjournalfull", "pbooktitlefull", "ptype"]
     input_df.loc(axis=1)[columns_to_normalize] = input_df.loc(axis=1)[columns_to_normalize].apply(
         lambda col: col.str.strip())
 
@@ -71,4 +74,48 @@ def inversed_pauthor_ptitle(input_df: pd.DataFrame) -> pd.DataFrame:
     df_must_wrong3 = df_possible_wrong1[df_possible_wrong1["pauthor"].str.contains(stop_words_catcher_regex)]
     wrong_row_index = list({*df_must_wrong1.index.values, *df_must_wrong2.index.values, *df_must_wrong3.index.values})
     input_df.loc[wrong_row_index, ["pauthor", "ptitle"]] = input_df.loc[wrong_row_index, ["ptitle", "pauthor"]].values
+    return input_df
+
+
+def impute(input_df: pd.DataFrame):
+    columns_to_impute = ["pjournalfull", "pbooktitlefull"]
+
+    def _impute(df, to_impute: str):
+        '''
+        Imputing to_impute column, based on ptitle
+        '''
+
+        pipeline = make_pipeline(
+            TfidfVectorizer(lowercase=True
+                            , analyzer='word'
+                            , ngram_range=(1, 2)  # include ngrams (e.g. climate change)
+                            # ,stop_words = stopwords.words("english") # remove stopwords
+                            # ,max_df=0.9 # appearing in max 90%
+                            # ,min_df=10 # appearing in min 10 docs)
+                            # ,max_features=2000 # the 2000 most common words overall
+                            ),
+            RandomForestClassifier(n_estimators=100, random_state=42)
+        )
+
+        # Removing messung if we impute pbooktitle
+        if to_impute == 'pbooktitlefull':
+            df.loc[:, to_impute] = df[to_impute].replace({'messung': None})
+
+        # Split the data into training and test sets
+        train_data = df[df[to_impute].notna()].copy()
+        test_data = df[df[to_impute].isna()].copy()
+
+        # Fit the pipeline on the training data
+        pipeline.fit(train_data['ptitle'], train_data[to_impute])
+
+        # Use the pipeline to predict the missing values in the label column
+        test_data.loc[test_data.index, to_impute] = pipeline.predict(test_data['ptitle'])
+
+        # Combine the training and test data
+        df.loc[:, to_impute] = pd.concat([train_data, test_data], axis=0)[to_impute]
+
+        return df
+
+    for column in columns_to_impute:
+        input_df = _impute(input_df, to_impute=column)
     return input_df

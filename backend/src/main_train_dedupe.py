@@ -16,7 +16,7 @@ def db():
 
 if __name__ == '__main__':
     # default classifier is logistic regression
-    estimator = LogisticRegression()
+    estimator = LogisticRegression(max_iter=1000)
     # estimator = SVC(probability=True)
     # retrain it by setting reuse_setting to False
     deduper = CustomDedupe(db()).train(reuse_setting=False, classifier=estimator).deduper

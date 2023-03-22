@@ -129,6 +129,7 @@ class CustomDedupe:
     def train(self, reuse_setting=True, classifier: BaseEstimator = None) -> TCustomDedupe:
         """
         Train blocking rules and classifier, save it to setting file for later use, and return the trained predicates
+        :param external_preprocessed_file: if given, the file would override original cleaned collection file
         :param conn: duckDBConnection
         :param reuse_setting: If True then the existing setting (classifier and predicates) will be used
         :param classifier: sklearn classifier instance,
@@ -162,8 +163,13 @@ class CustomDedupe:
             for record in input_data.values():
                 yield record['ptitle']
 
-        def norm_partial_token_sort_ratio(*args, **kwargs):
-            return fuzz.partial_token_sort_ratio(*args, **kwargs) / 100
+        def pbooktitlefull(input_data):
+            for record in input_data.values():
+                yield record['pbooktitlefull']
+
+        def pjournaltitlefull(input_data):
+            for record in input_data.values():
+                yield record['pjournalfull']
 
         BLOCKING_FIELDS = [
             {'variable name': 'pauthor', 'field': 'pauthor', 'type': 'Set', 'corpus': pauthors(input_data)},
@@ -171,11 +177,13 @@ class CustomDedupe:
             # {'type': 'Interaction', 'interaction variables': ['pauthor', 'ptitle_text']},
             # {'variable name': 'ptitle_token_set_ratio', 'field': 'ptitle', 'type': 'Custom', 'comparator': fuzz.token_set_ratio},
             {'variable name': 'ptitle_token_sort_ratio', 'field': 'ptitle', 'type': 'Custom',
-             'comparator': norm_partial_token_sort_ratio},
+             'comparator': fuzz.partial_token_sort_ratio},
             # {'field': 'pyear', 'type': 'Exact', 'has missing': True},
             # {'field': 'pjournal', 'type': 'String', 'has missing': True},
-            # {'field': 'pbooktitle', 'type': 'String', 'has missing': True},
-            # {'field': 'ptype', 'type': 'String', 'has missing': True}
+            # {'field': 'pbooktitlefull', 'type': 'Text', 'corpus': pbooktitlefull(input_data)},
+            {'field': 'pjournalfull', 'type': 'Text', 'corpus': pjournaltitlefull(input_data)},
+            # {'field': 'ptype', 'type': 'Categorical',
+            #  'categories': ['article', 'inproceedings', 'phdthesis', 'incollection', 'book']}
         ]
 
         # Create a new deduper object and pass our data model to it.
@@ -276,3 +284,25 @@ class CustomDedupe:
         print("\n")
         print(metrics.to_string())
         return self
+
+    def error_analysis_report(self, threshold=0.5) -> TCustomDedupe:
+        df_fn_pairs = self.conn.execute(f"""
+                    SELECT t.column0, t.key1, t.key2, t.label
+                    FROM train t, train_scores ts
+                    WHERE lower(t.key1) = lower(ts.key1)
+                    AND lower(t.key2) = lower(ts.key2)
+                    AND t.label = TRUE
+                    AND ts.score < {threshold}
+                    """).df()
+
+        df_fp_pairs = self.conn.execute(f"""
+                            SELECT t.column0, t.key1, t.key2, t.label
+                            FROM train t, train_scores ts
+                            WHERE lower(t.key1) = lower(ts.key1)
+                            AND lower(t.key2) = lower(ts.key2)
+                            AND t.label = FALSE
+                            AND ts.score > {threshold}
+                            """).df()
+
+        df_fn_pairs.to_csv(project_root / DATA_PATH / "train_false_negative_results.csv", index=True)
+        df_fp_pairs.to_csv(project_root / DATA_PATH / "train_false_positive_results.csv", index=True)

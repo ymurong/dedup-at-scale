@@ -65,11 +65,10 @@ LogisticRegression (ptitle as text + corpus, pauthor as set)
 |0     |0.780482|0.873681 |0.650444|0.745713|0.779158|1379     |371      |
 
 
-LogisticRegression (ptitle as text + corpus, ptitle token set ratio, ptitle token sort ratio, pauthor as set)
+LogisticRegression (ptitle as text + corpus, ptitle partial_token_sort_ratio, pauthor as set)
 
-|FIELD1|accuracy|precision|recall  |f1      |auc     |false_neg|false_pos|
-|------|--------|---------|--------|--------|--------|---------|---------|
-|0     |0.779102|0.868919 |0.651965|0.744967|0.777807|1373     |388      |
-
+|FIELD1|accuracy|precision|recall |f1      |auc     |false_neg|false_pos|
+|------|--------|---------|-------|--------|--------|---------|---------|
+|0     |0.791019|0.876197 |0.67275|0.761113|0.789814|1291     |375      |
 
 ## With Data Imputation
